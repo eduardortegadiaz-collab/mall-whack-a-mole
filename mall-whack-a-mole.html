@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mall Whack-a-Mole</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fdf6ec;
+      --surface: #fff8f0;
+      --card: #ffffff;
+      --accent: #ff6b35;
+      --accent2: #ffcc02;
+      --accent3: #4ecdc4;
+      --text: #1a1a2e;
+      --muted: #7a7a9a;
+      --border: #ede0cc;
+      --correct: #52b788;
+      --wrong: #e63946;
+      --radius: 18px;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 48px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255,107,53,0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 75%, rgba(78,205,196,0.1) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255,204,2,0.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #game {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ── Screens ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── Start / End ── */
+    .hero { text-align: center; padding: 2rem 1rem; }
+    .hero-icon { font-size: 72px; margin-bottom: 16px; display: block; animation: bob 2s ease-in-out infinite; }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .hero h1 { font-family: 'Fredoka One', cursive; font-size: 38px; color: var(--accent); line-height: 1.1; margin-bottom: 10px; }
+    .hero p { font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 380px; margin: 0 auto 28px; }
+
+    .btn-main {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Fredoka One', cursive;
+      font-size: 20px;
+      letter-spacing: 0.5px;
+      padding: 14px 40px;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 6px 0 #c94e20;
+    }
+    .btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #c94e20; }
+    .btn-main:active { transform: translateY(2px); box-shadow: 0 3px 0 #c94e20; }
+
+    /* ── Header ── */
+    #play-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    #play-title { font-family: 'Fredoka One', cursive; font-size: 26px; color: var(--accent); }
+    .stats { display: flex; gap: 12px; }
+    .stat-pill {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      padding: 4px 14px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .stat-pill strong { color: var(--text); font-size: 16px; }
+
+    /* ── Progress pips ── */
+    #progress { display: flex; gap: 5px; margin-bottom: 10px; }
+    .pip { height: 7px; border-radius: 4px; flex: 1; background: var(--border); transition: background 0.3s; }
+    .pip.correct { background: var(--correct); }
+    .pip.wrong { background: var(--wrong); }
+
+    /* ── Timer bar ── */
+    #timer-wrap { height: 8px; background: var(--border); border-radius: 6px; margin-bottom: 14px; overflow: hidden; }
+    #timer-bar { height: 100%; background: var(--accent3); border-radius: 6px; transition: width 0.1s linear, background 0.4s; }
+
+    /* ── Target card ── */
+    #target-card {
+      background: var(--card);
+      border: 2px solid var(--accent2);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 4px 0 #d4a800;
+    }
+    #target-icon { font-size: 36px; }
+    #target-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    #target-name { font-family: 'Fredoka One', cursive; font-size: 22px; color: var(--text); }
+
+    /* ── Grid ── */
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .hole {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.12s, border-color 0.15s, background 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .hole::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0);
+      transition: background 0.15s;
+    }
+    .hole:hover { border-color: var(--accent); transform: scale(1.04); }
+    .hole:hover::after { background: rgba(255,107,53,0.05); }
+    .hole:active { transform: scale(0.93); }
+
+    .mole-e { font-size: 32px; transition: opacity 0.2s, transform 0.25s; }
+    .mole-l { font-size: 10px; color: var(--muted); margin-top: 4px; text-align: center; padding: 0 4px; line-height: 1.2; font-weight: 600; transition: opacity 0.2s; }
+
+    .hole.hidden .mole-e { opacity: 0; transform: translateY(18px); }
+    .hole.hidden .mole-l { opacity: 0; }
+    .hole.visible .mole-e { opacity: 1; transform: translateY(0); }
+    .hole.visible .mole-l { opacity: 1; }
+
+    .hole.hit-correct { background: #edfbf4 !important; border-color: var(--correct) !important; }
+    .hole.hit-wrong   { background: #fff0f1 !important; border-color: var(--wrong)   !important; }
+
+    /* ── Feedback ── */
+    #feedback {
+      height: 30px;
+      text-align: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .fb-ok  { color: var(--correct); }
+    .fb-err { color: var(--wrong); }
+
+    /* ── End screen ── */
+    .end-grid { display: flex; gap: 12px; justify-content: center; margin: 18px 0; }
+    .end-card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      text-align: center;
+      min-width: 90px;
+    }
+    .end-val { font-family: 'Fredoka One', cursive; font-size: 30px; color: var(--accent); display: block; }
+    .end-lbl { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    @media (max-width: 420px) {
+      .hero h1 { font-size: 30px; }
+      #grid { gap: 7px; }
+      .mole-e { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+<div id="game">
+
+  <!-- Start -->
+  <div id="start-screen" class="screen active">
+    <div class="hero">
+      <span class="hero-icon">🛍️</span>
+      <h1>Mall Whack-a-Mole</h1>
+      <p>A mall item pops up hiding among grocery distractors — whack the thing you'd actually buy at the mall! +2 for correct, −1 for a grocery. 12 rounds.</p>
+      <button class="btn-main" onclick="startGame()">Hit the mall!</button>
+    </div>
+  </div>
+
+  <!-- Play -->
+  <div id="play-screen" class="screen">
+    <div id="play-header">
+      <div id="play-title">🛍️ Mall Whack!</div>
+      <div class="stats">
+        <div class="stat-pill">Score <strong id="score-display">0</strong></div>
+        <div class="stat-pill">Round <strong id="round-display">1</strong>/12</div>
+      </div>
+    </div>
+    <div id="progress"></div>
+    <div id="timer-wrap"><div id="timer-bar" style="width:100%"></div></div>
+    <div id="target-card">
+      <div id="target-icon">👟</div>
+      <div>
+        <div id="target-label">Whack the mall item:</div>
+        <div id="target-name">Sneakers</div>
+      </div>
+    </div>
+    <div id="grid"></div>
+    <div id="feedback"></div>
+  </div>
+
+  <!-- End -->
+  <div id="end-screen" class="screen">
+    <div class="hero">
+      <span class="hero-icon" id="end-emoji">🏆</span>
+      <h1 id="end-title">Shopping spree over!</h1>
+      <div class="end-grid">
+        <div class="end-card"><span class="end-val" id="final-score">0</span><span class="end-lbl">Points</span></div>
+        <div class="end-card"><span class="end-val" id="final-correct">0</span><span class="end-lbl">Correct</span></div>
+        <div class="end-card"><span class="end-val" id="final-wrong">0</span><span class="end-lbl">Missed</span></div>
+      </div>
+      <p id="end-msg"></p>
+      <br/>
+      <button class="btn-main" onclick="startGame()">Play again!</button>
+    </div>
+  </div>
+
+</div>
+<script>
+var MALL_ITEMS = [
+  {emoji:'👟',name:'Sneakers'},{emoji:'👗',name:'Dress'},{emoji:'👔',name:'Dress shirt'},
+  {emoji:'👖',name:'Jeans'},{emoji:'👜',name:'Handbag'},{emoji:'💍',name:'Ring'},
+  {emoji:'⌚',name:'Watch'},{emoji:'🕶️',name:'Sunglasses'},{emoji:'🎒',name:'Backpack'},
+  {emoji:'🧥',name:'Coat'},{emoji:'👒',name:'Sun hat'},{emoji:'💄',name:'Lipstick'},
+  {emoji:'🧴',name:'Lotion'},{emoji:'🎮',name:'Video game'},{emoji:'📱',name:'Phone case'},
+  {emoji:'💻',name:'Laptop'},{emoji:'🎧',name:'Headphones'},{emoji:'🧸',name:'Stuffed animal'},
+  {emoji:'🩴',name:'Sandals'},{emoji:'🧣',name:'Scarf'},{emoji:'💎',name:'Necklace'},
+  {emoji:'👠',name:'Heels'},{emoji:'🧤',name:'Gloves'},{emoji:'🪮',name:'Hair brush'},
+];
+
+var GROCERIES = [
+  {emoji:'🥛',name:'Milk'},{emoji:'🍞',name:'Bread'},{emoji:'🥚',name:'Eggs'},
+  {emoji:'🧀',name:'Cheese'},{emoji:'🍎',name:'Apple'},{emoji:'🍌',name:'Banana'},
+  {emoji:'🥕',name:'Carrot'},{emoji:'🥦',name:'Broccoli'},{emoji:'🍅',name:'Tomato'},
+  {emoji:'🧅',name:'Onion'},{emoji:'🧄',name:'Garlic'},{emoji:'🍗',name:'Chicken'},
+  {emoji:'🥩',name:'Beef'},{emoji:'🐟',name:'Fish'},{emoji:'🍚',name:'Rice'},
+  {emoji:'🍝',name:'Pasta'},{emoji:'🫘',name:'Beans'},{emoji:'🥫',name:'Canned soup'},
+  {emoji:'🧃',name:'Juice'},{emoji:'🍊',name:'Orange'},{emoji:'🥬',name:'Lettuce'},
+  {emoji:'🫐',name:'Blueberries'},{emoji:'🧈',name:'Butter'},{emoji:'🥑',name:'Avocado'},
+];
+
+var score=0,round=0,totalRounds=12,correct=0,wrong=0;
+var timerInterval=null,roundTimer=null,currentTarget=null,pipEls=[];
+
+function shuffle(a){ return a.slice().sort(function(){ return Math.random()-0.5; }); }
+
+function show(id){
+  ['start-screen','play-screen','end-screen'].forEach(function(s){
+    document.getElementById(s).classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame(){
+  score=0; round=0; correct=0; wrong=0;
+  show('play-screen');
+  buildProgress();
+  nextRound();
+}
+
+function buildProgress(){
+  var p=document.getElementById('progress');
+  p.innerHTML=''; pipEls=[];
+  for(var i=0;i<totalRounds;i++){
+    var d=document.createElement('div');
+    d.className='pip'; p.appendChild(d); pipEls.push(d);
+  }
+}
+
+function nextRound(){
+  if(round>=totalRounds){ endGame(); return; }
+  clearTimeout(roundTimer); clearInterval(timerInterval);
+  document.getElementById('round-display').textContent=round+1;
+  document.getElementById('feedback').textContent='';
+  document.getElementById('feedback').className='';
+
+  var target=shuffle(MALL_ITEMS)[0];
+  currentTarget=target;
+  var distractors=shuffle(GROCERIES).slice(0,7);
+  var items=shuffle([target].concat(distractors));
+
+  document.getElementById('target-icon').textContent=target.emoji;
+  document.getElementById('target-name').textContent=target.name;
+
+  var grid=document.getElementById('grid');
+  grid.innerHTML='';
+  items.forEach(function(item){
+    var hole=document.createElement('div');
+    hole.className='hole hidden';
+    hole.innerHTML='<div class="mole-e">'+item.emoji+'</div><div class="mole-l">'+item.name+'</div>';
+    hole.onclick=(function(h,it){ return function(){ handleClick(h,it); }; })(hole,item);
+    grid.appendChild(hole);
+    setTimeout(function(){ hole.classList.replace('hidden','visible'); }, 50+Math.random()*300);
+  });
+
+  startTimer(3500);
+  roundTimer=setTimeout(function(){ resolveRound(null,null); }, 3500);
+}
+
+function startTimer(dur){
+  var bar=document.getElementById('timer-bar');
+  bar.style.width='100%'; bar.style.background='#4ecdc4';
+  var start=Date.now();
+  clearInterval(timerInterval);
+  timerInterval=setInterval(function(){
+    var pct=Math.max(0,100-((Date.now()-start)/dur*100));
+    bar.style.width=pct+'%';
+    bar.style.background=pct<30?'#e63946':pct<60?'#ffcc02':'#4ecdc4';
+    if(pct===0) clearInterval(timerInterval);
+  },50);
+}
+
+function handleClick(hole,item){
+  clearTimeout(roundTimer); clearInterval(timerInterval);
+  resolveRound(hole,item);
+}
+
+function resolveRound(hole,item){
+  document.getElementById('grid').querySelectorAll('.hole').forEach(function(h){ h.onclick=null; });
+  var fb=document.getElementById('feedback');
+  if(!item){
+    fb.textContent='⏱ Too slow! −1'; fb.className='fb-err';
+    score=Math.max(0,score-1); wrong++;
+    if(pipEls[round]) pipEls[round].classList.add('wrong');
+  } else if(item.emoji===currentTarget.emoji){
+    fb.textContent='✓ Correct! +2'; fb.className='fb-ok';
+    score+=2; correct++; hole.classList.add('hit-correct');
+    if(pipEls[round]) pipEls[round].classList.add('correct');
+  } else {
+    fb.textContent='✗ '+item.name+' is a grocery! −1'; fb.className='fb-err';
+    score=Math.max(0,score-1); wrong++; hole.classList.add('hit-wrong');
+    if(pipEls[round]) pipEls[round].classList.add('wrong');
+    document.getElementById('grid').querySelectorAll('.hole').forEach(function(h){
+      var lbl=h.querySelector('.mole-l');
+      if(lbl && lbl.textContent===currentTarget.name) h.classList.add('hit-correct');
+    });
+  }
+  document.getElementById('score-display').textContent=score;
+  round++;
+  setTimeout(nextRound,900);
+}
+
+function endGame(){
+  show('end-screen');
+  document.getElementById('final-score').textContent=score;
+  document.getElementById('final-correct').textContent=correct;
+  document.getElementById('final-wrong').textContent=wrong;
+  var pct=Math.round(correct/totalRounds*100);
+  var emoji='🥉', title='Window shopper!', msg='The groceries kept pulling you away from the good stuff.';
+  if(pct>=90){ emoji='🏆'; title='Mall master!'; msg='You could find anything in any store — no map needed.'; }
+  else if(pct>=70){ emoji='🥇'; title='Power shopper!'; msg='Almost everything made it into the bag.'; }
+  else if(pct>=50){ emoji='🥈'; title='Getting the hang of it!'; msg='A few more laps around the mall and you\'ll be unstoppable.'; }
+  document.getElementById('end-emoji').textContent=emoji;
+  document.getElementById('end-title').textContent=title;
+  document.getElementById('end-msg').textContent=msg;
+}
+</script>
+</body>
+</html>
